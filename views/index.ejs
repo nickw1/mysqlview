@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Database results</title>
+<style type='text/css'>
+th { background-color : #c0c0ff; }
+tr.odd { background-color: #c0ffc0; }
+tr.even { background-color: #ffffc0; }
+body { font-family: helvetica, arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Database results</h1>
+<%
+    let row = 'odd';
+    for(let table in allResults) {
+        %>
+        <h2>Table <%= table %> </h2>
+        <table>
+        <thead>
+        <tr>
+        <%
+        for(let field of allResults[table].fieldNames) {
+            %>
+            <th><%= field %></th>
+            <%    
+        }
+        %>
+        </tr></thead><tbody>
+        <%
+        for(let result of allResults[table].results) {
+            %>
+            <tr class='<%= row %>'>
+            <%
+            for(let field of allResults[table].fieldNames) {
+                %>
+                <td><%= result[field] %></td>
+                <%
+            }
+            %>
+            </tr>
+            <%
+            row = (row=='even') ? 'odd': 'even';
+        }
+        %>
+        </tbody></table>
+        <%
+    }
+
+%>
+</body>
+</html>
