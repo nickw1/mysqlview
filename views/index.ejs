@@ -7,10 +7,15 @@ th { background-color : #c0c0ff; }
 tr.odd { background-color: #c0ffc0; }
 tr.even { background-color: #ffffc0; }
 body { font-family: helvetica, arial, sans-serif; }
+.error { color: red; font-weight: bold }
 </style>
 </head>
 <body>
+<p class='error'><%=error%></p>
 <h1>Database results</h1>
+<p><form method='post' action='/logout'>
+<input type='submit' value='Log out' />
+</form></p>
 <%
     let row = 'odd';
     for(let table in allResults) {
@@ -31,19 +36,57 @@ body { font-family: helvetica, arial, sans-serif; }
         for(let result of allResults[table].results) {
             %>
             <tr class='<%= row %>'>
+            <form method='post' action='/<%=table%>/row/<%=result[idCol]%>'>
             <%
             for(let field of allResults[table].fieldNames) {
                 %>
-                <td><%= result[field] %></td>
+                <td>
+                <%
+                if(field == idCol) {
+                    %><%=result[idCol]%><%
+                } else { 
+                    %>
+                    <input name='<%=field%>' type='text' value='<%= result[field] %>' />
+                    <%
+                }
+                %>
+                </td>
                 <%
             }
             %>
+            <td><input type='submit' value='Update!'></td>
+            </form>
+            <form method='post' action='/<%=table%>/row/<%=result[idCol]%>/delete'>
+            <td><input type='submit' value='Delete!'></td>
+            </form>
             </tr>
             <%
             row = (row=='even') ? 'odd': 'even';
         }
         %>
         </tbody></table>
+        <h3>Create new record</h3>
+        <form method='post' action='/<%=table%>/row/create'>
+        <table>
+        <%
+        for(let field of allResults[table].fieldNames) {
+            %>
+            <tr>
+            <%
+            if(field != idCol) {
+                %>
+                <td><label for='<%=field%>'><%=field%></label></td>
+                <td><input name='<%=field%>' id='<%=field%>' type='text' /></td>
+                <%
+            }
+            %>
+            </tr>
+            <%
+        }
+        %>
+        </table>
+        <input type='submit' value='Create record!' />
+        </form>
         <%
     }
 
