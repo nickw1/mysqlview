@@ -12,7 +12,10 @@ app.use(express.static('public'));
 let con, tables = process.env.TABLES ? JSON.parse(process.env.TABLES): null;
 const idCol = process.env.ID_COLUMN || 'ID'
 
-
+const errors = [
+    "Invalid login",
+    "Database query error"
+];
 
 app.post('/login', async(req, res) => {
     try {
@@ -29,20 +32,24 @@ app.post('/login', async(req, res) => {
         res.redirect('/');
     } catch(e) {
         console.error(e);
-        res.redirect('/login.html');
+        res.redirect('/login?error=1');
     }
 });
 
 app.post('/logout', (req, res) => {
-    console.log('Ending');
     con.destroy();
     con = null;
-    res.redirect('/login.html');
+    res.redirect('/login');
+});
+
+app.get('/login', (req, res) => {
+    const error = req.query.error > 0 && req.query.error <= errors.length ? errors[req.query.error-1] : ""; 
+    res.render('login', { error: error } );
 });
 
 app.use((req, res, next) => {
     if(!con) {
-        res.redirect('/login.html');
+        res.redirect('/login');
     } else {
         next();
     }
@@ -50,17 +57,17 @@ app.use((req, res, next) => {
 
 app.get('/', async(req, res) => {
     const allResults = {};
-    req.query.error = req.query.error || "";
+    const error = req.query.error > 0 && req.query.error <= errors.length ? errors[req.query.error-1] : ""; 
     for(let table of tables) {
         try {
-            const [results, fields] = await con.execute(`SELECT * FROM ${table} ORDER BY id`);
+            const [results, fields] = await con.execute(`SELECT * FROM ${table} ORDER BY ${idCol}`);
             const fieldNames = fields.map (fieldInfo => fieldInfo.name);
             allResults[table] = { results: results, fieldNames: fieldNames };    
         } catch(e) {
-            req.query.error += `Table ${table}: Error: ${e}`;
+            console.error(`Table ${table}: Error: ${e}`);
         }
     }
-    res.render('index', { allResults: allResults, idCol: idCol, error: req.query.error } );
+    res.render('index', { allResults: allResults, idCol: idCol, error: error } );
 });
 
 
@@ -73,7 +80,8 @@ app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res)=> {
         const [results, fields] = await con.execute(sql, Object.values(req.body));
         res.redirect('/');
     } catch(e) {
-        res.redirect(`/?error=${e.message}, caused by "${e.sql}"`);
+        console.error(e);
+        res.redirect(`/?error=2`);
     }
 });
 
@@ -82,7 +90,8 @@ app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)/delete', async(req, res) => {
         const [results, fields] = await con.execute(`DELETE FROM ${req.params.table} where ${idCol}=${req.params.id}`);
         res.redirect('/');
     } catch(e) {
-        res.redirect(`/?error=${e.message}, caused by "${e.sql}"`);
+        console.error(e);
+        res.redirect(`/?error=2`);
     }
 });
     
@@ -93,7 +102,8 @@ app.post('/:table([a-zA-Z_]+)/row/create', async(req, res) => {
         const [results, fields] = await con.execute(sql, Object.values(req.body));
         res.redirect('/');
     } catch(e) {
-        res.redirect(`/?error=${e.message}, caused by "${e.sql}"`);
+        console.error(e);
+        res.redirect(`/?error=2`);
     }
 });
 

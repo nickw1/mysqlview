@@ -1,0 +1,16 @@
+th { 
+    background-color : #c0c0ff; 
+}
+tr.odd { 
+    background-color: #c0ffc0; 
+}
+tr.even { 
+    background-color: #ffffc0; 
+}
+body { 
+    font-family: helvetica, arial, sans-serif; 
+}
+.error { 
+    color: red; 
+    font-weight: bold 
+}
