@@ -2,14 +2,26 @@
 <html>
 <head>
 <title>Database results</title>
-<link rel='stylesheet' type='text/css' href='css/mysqlview.css' />
+<link rel='stylesheet' type='text/css' href='/css/mysqlview.css' />
 </head>
 <body>
 <p class='error'><%=error%></p>
 <h1>Database results</h1>
-<p><form method='post' action='/logout'>
+<p>
+<form method="get" action="/table">
+<select name="tableName">
+<%
+for(let table of allTables) {
+    %><option><%=table%></option><%
+}
+%>
+</select>
+<input type="submit" value="Choose Table">
+</form>
+<form method='post' action='/logout'>
 <input type='submit' value='Log out' />
-</form></p>
+</form>
+</p>
 <%
     let row = 'odd';
     for(let table in allResults) {
