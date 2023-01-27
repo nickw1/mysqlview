@@ -9,7 +9,10 @@ app.use(express.urlencoded({extended: false}));
 
 app.use(express.static('public'));
 
-let con, tables = process.env.TABLES ? JSON.parse(process.env.TABLES): null, allTables;
+import DB from './db.mjs';
+const db = new DB();
+
+let tables = process.env.TABLES ? JSON.parse(process.env.TABLES): null, allTables;
 const idCol = process.env.ID_COLUMN || 'ID'
 
 const errors = [
@@ -19,14 +22,14 @@ const errors = [
 
 app.post('/login', async(req, res) => {
     try {
-        con = await mysql2.createConnection({
+        await db.init(req.body.provider, { 
             host: process.env.DB_HOST,
             user: req.body.username,
             password: req.body.password, 
             database: req.body.database 
-        });
-        const [results, fields] = await con.execute(`SELECT * FROM information_schema.tables AS t WHERE table_schema='${req.body.database}'`);
-        allTables = results.map(result => result.TABLE_NAME);
+        }, idCol);
+
+        allTables = await db.getAllTables(req.body.database);
         if(!tables) {
             tables = allTables;
         }
@@ -35,11 +38,11 @@ app.post('/login', async(req, res) => {
         console.error(e);
         res.redirect('/login?error=1');
     }
+
 });
 
 app.post('/logout', (req, res) => {
-    con.destroy();
-    con = null;
+    db.destroy();
     res.redirect('/login');
 });
 
@@ -49,7 +52,7 @@ app.get('/login', (req, res) => {
 });
 
 app.use((req, res, next) => {
-    if(!con) {
+    if(!db.conn) {
         res.redirect('/login');
     } else {
         next();
@@ -61,7 +64,7 @@ app.get('/', async(req, res) => {
     const error = req.query.error > 0 && req.query.error <= errors.length ? errors[req.query.error-1] : ""; 
     for(let table of tables) {
         try {
-            allResults[table] = await getTableData(table); 
+            allResults[table] = await db.getTableData(table); 
         } catch(e) {
             console.error(`Table ${table}: Error: ${e}`);
         }
@@ -82,7 +85,7 @@ app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res)=> {
     const placeholders  = Object.keys(req.body).map(col => `${col}=?`);
     sql += placeholders.join(',') + ` WHERE ${idCol}=${req.params.id}`;
     try {
-        const [results, fields] = await con.execute(sql, Object.values(req.body));
+        await db.updateQuery(sql, Object.values(req.body));
         res.redirect('/');
     } catch(e) {
         console.error(e);
@@ -92,7 +95,7 @@ app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res)=> {
 
 app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)/delete', async(req, res) => {
     try {
-        const [results, fields] = await con.execute(`DELETE FROM ${req.params.table} where ${idCol}=${req.params.id}`);
+        await db.updateQuery(`DELETE FROM ${req.params.table} where ${idCol}=${req.params.id}`);
         res.redirect('/');
     } catch(e) {
         console.error(e);
@@ -104,7 +107,7 @@ app.post('/:table([a-zA-Z_]+)/row/create', async(req, res) => {
     const cols = Object.keys(req.body);
     let sql = `INSERT INTO ${req.params.table} (` + cols.join(',') + `) VALUES (` + cols.map(col => '?').join(',') + `)`;
     try {
-        const [results, fields] = await con.execute(sql, Object.values(req.body));
+        await db.updateQuery(sql, Object.values(req.body));
         res.redirect('/');
     } catch(e) {
         console.error(e);
@@ -115,17 +118,11 @@ app.post('/:table([a-zA-Z_]+)/row/create', async(req, res) => {
 async function showTable(res, table) {
     const allResults = {};
     try {
-        allResults[table] = await getTableData(table);
+        allResults[table] = await db.getTableData(table);
     } catch(e) {
         console.error(e);
     }    
     res.render('index', { allResults: allResults, idCol: idCol, error: "", allTables: allTables } );
-}
-
-async function getTableData(table) {
-    const [results, fields] = await con.execute(`SELECT * FROM ${table} ORDER BY ${idCol}`);
-    const fieldNames = fields.map (fieldInfo => fieldInfo.name);
-    return { results: results, fieldNames: fieldNames };    
 }
 
 app.listen(3100);
