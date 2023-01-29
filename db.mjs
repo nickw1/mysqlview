@@ -48,12 +48,12 @@ class DB {
         switch(this.provider) {
             case "mysql":
                 const [results, fields] = await this.conn.execute(sql, params);
-                return results.affectedRows;
+                return results;
                 break;
 
             case "sqlite":
                 const info = this.conn.prepare(sql).run(params);
-                return info.changes;
+                return info;
                 break;
         }
     }
@@ -81,7 +81,10 @@ class DB {
             case "mysql":
                 const [results, fields] = await this.conn.execute(`SELECT * FROM ${table} ORDER BY ${this.idCol}`);
                 data.fieldNames = fields.map(fieldInfo => fieldInfo.name);
-                data.results = results;
+				data.results = {};
+				results.forEach ( result => {
+					data.results[result[this.idCol]] = result;
+				}); 
                 break;
             
             case "sqlite":

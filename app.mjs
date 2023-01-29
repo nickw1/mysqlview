@@ -8,6 +8,7 @@ app.set('view engine', 'ejs');
 app.use(express.urlencoded({extended: false}));
 
 app.use(express.static('public'));
+app.use(express.json());
 
 import DB from './db.mjs';
 const db = new DB();
@@ -20,26 +21,33 @@ const errors = [
     "Database query error"
 ];
 
-app.post('/login', async(req, res) => {
+initdb();
+
+//app.post('/login', async(req, res) => {
+async function initdb() {
     try {
-        await db.init(req.body.provider, { 
+        await db.init(/*req.body.provider*/'mysql', { 
             host: process.env.DB_HOST,
-            user: req.body.username,
-            password: req.body.password, 
-            database: req.body.database 
+            //user: req.body.username,
+            //password: req.body.password, 
+            //database: req.body.database 
+			user: 'ephp001',
+			password: 'huneecoh',
+			database: 'ephp001'
         }, idCol);
 
-        allTables = await db.getAllTables(req.body.database);
+/*        allTables = await db.getAllTables(req.body.database||null);
         if(!tables) {
             tables = allTables;
         }
-        res.redirect('/');
+		*/
+ //       res.redirect('/');
     } catch(e) {
         console.error(e);
-        res.redirect('/login?error=1');
+  //      res.redirect('/login?error=1');
     }
 
-});
+//});
 
 app.post('/logout', (req, res) => {
     db.destroy();
@@ -48,7 +56,7 @@ app.post('/logout', (req, res) => {
 
 app.get('/login', (req, res) => {
     const error = req.query.error > 0 && req.query.error <= errors.length ? errors[req.query.error-1] : ""; 
-    res.render('login', { error: error } );
+    TODO('login', { error: error } );
 });
 
 app.use((req, res, next) => {
@@ -59,7 +67,7 @@ app.use((req, res, next) => {
     }
 });
 
-app.get('/', async(req, res) => {
+app.get('/allTables', async(req, res) => {
     const allResults = {};
     const error = req.query.error > 0 && req.query.error <= errors.length ? errors[req.query.error-1] : ""; 
     for(let table of tables) {
@@ -69,15 +77,15 @@ app.get('/', async(req, res) => {
             console.error(`Table ${table}: Error: ${e}`);
         }
     }
-    res.render('index', { allResults: allResults, idCol: idCol, error: error, allTables: allTables } );
+	res.json(allResults);
 });
 
 app.get('/table/:table([a-zA-Z_]+)', async(req, res) => {
-    await showTable(res, req.params.table);
+    res.json(await showTable(res, req.params.table));
 });
 
 app.get('/table', async(req, res) => {
-    await showTable(res, req.query.tableName);
+    res.json(await showTable(res, req.query.tableName));
 });
 
 app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res)=> {
@@ -86,20 +94,20 @@ app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res)=> {
     sql += placeholders.join(',') + ` WHERE ${idCol}=${req.params.id}`;
     try {
         await db.updateQuery(sql, Object.values(req.body));
-        res.redirect('/');
+		res.json({success:1});
     } catch(e) {
         console.error(e);
-        res.redirect(`/?error=2`);
+		res.json({error:e});
     }
 });
 
-app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)/delete', async(req, res) => {
+app.delete('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res) => {
     try {
         await db.updateQuery(`DELETE FROM ${req.params.table} where ${idCol}=${req.params.id}`);
-        res.redirect('/');
+		res.json({success:1});
     } catch(e) {
         console.error(e);
-        res.redirect(`/?error=2`);
+		res.json({error:e});
     }
 });
     
@@ -107,22 +115,23 @@ app.post('/:table([a-zA-Z_]+)/row/create', async(req, res) => {
     const cols = Object.keys(req.body);
     let sql = `INSERT INTO ${req.params.table} (` + cols.join(',') + `) VALUES (` + cols.map(col => '?').join(',') + `)`;
     try {
-        await db.updateQuery(sql, Object.values(req.body));
-        res.redirect('/');
+        const results = await db.updateQuery(sql, Object.values(req.body));
+		res.json({id: results.insertId});
     } catch(e) {
         console.error(e);
-        res.redirect(`/?error=2`);
+		res.json({error:e});
     }
 });
 
 async function showTable(res, table) {
     const allResults = {};
     try {
-        allResults[table] = await db.getTableData(table);
+        return await db.getTableData(table);
     } catch(e) {
         console.error(e);
+		res.json({error:e});
     }    
-    res.render('index', { allResults: allResults, idCol: idCol, error: "", allTables: allTables } );
 }
 
 app.listen(3100);
+}
