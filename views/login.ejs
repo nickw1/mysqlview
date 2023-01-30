@@ -3,23 +3,33 @@
 <head>
 <title>Login</title>
 <link rel='stylesheet' type='text/css' href='/css/mysqlview.css' />
+<script type='module'>
+document.getElementById('provider').addEventListener('change', e=> {
+	const provider = document.getElementById('provider').value;
+	document.getElementById('login').style.display = provider=='sqlite' ? 'none':'block';
+});
+</script>
 </head>
 <body>
 <p class='error'><%=error%></p>
 <h1>Login</h1>
 <form method="post" action="/login">
+<div>
 Database Provider: <br />
-<select name="provider">
-<option value='sqlite' selected>SQLite</option>
-<option value='mysql'>MySQL</option>
+<select name="provider" id="provider">
+<option value='sqlite'>SQLite</option>
+<option value='mysql' selected>MySQL</option>
 </select>
 <br />
 Database: <br />
 <input name="database" value="ephp001"/><br />
+</div>
+<div id='login'>
 Username: <br />
 <input name="username" value="ephp001"/><br />
 Password: <br />
 <input name="password" type="password" /><br />
+</div>
 <input type="submit" value="Go!" />
 </form>
 </body>

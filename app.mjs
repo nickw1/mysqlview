@@ -13,7 +13,7 @@ import DB from './db.mjs';
 const db = new DB();
 
 let tables = process.env.TABLES ? JSON.parse(process.env.TABLES): null, allTables;
-const idCol = process.env.ID_COLUMN || 'ID'
+const idCol = process.env.ID_COLUMN || 'id'
 
 const errors = [
     "Invalid login",

@@ -3,7 +3,7 @@ import Database from 'better-sqlite3';
 
 class DB {
 
-    async init(provider, params, idCol='ID') {
+    async init(provider, params, idCol='id') {
         try {
             this.provider = provider;
             this.conn = await this.initDB(params);
