@@ -66,7 +66,10 @@ class DB {
                 break;
 
             case "sqlite":
-                return this.conn.prepare("SELECT tbl_name FROM sqlite_master WHERE type='table' ORDER BY tbl_name").all().map(row => row.tbl_name);
+                const stmt = this.conn.prepare("SELECT tbl_name FROM sqlite_master WHERE type='table' ORDER BY tbl_name");
+                const results2 = stmt.all();
+                console.log(results2);
+                return results2.map(row => row.tbl_name);
                 break;
         }
     }

@@ -3,20 +3,28 @@
 <head>
 <title>Database results</title>
 <link rel='stylesheet' type='text/css' href='/css/mysqlview.css' />
+<script type='module'>
+const select = document.getElementById('tableName');
+select.addEventListener('change', e => {
+	window.location = `/table?tableName=${select.value}`;
+});
+</script>
 </head>
 <body>
 <p class='error'><%=error%></p>
 <h1>Database results</h1>
 <p>
 <form method="get" action="/table">
-<select name="tableName">
+<select name="tableName" id="tableName">
 <%
 for(let table of allTables) {
     %><option><%=table%></option><%
 }
 %>
 </select>
+<!--
 <input type="submit" value="Choose Table">
+-->
 </form>
 <form method='post' action='/logout'>
 <input type='submit' value='Log out' />
