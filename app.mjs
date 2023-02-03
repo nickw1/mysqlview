@@ -1,4 +1,4 @@
-import express from 'express'
+import express from 'express';
 import mysql2 from 'mysql2/promise';
 import 'dotenv/config';
 
@@ -14,54 +14,41 @@ import DB from './db.mjs';
 const db = new DB();
 
 let tables = process.env.TABLES ? JSON.parse(process.env.TABLES): null, allTables;
-const idCol = process.env.ID_COLUMN || 'ID'
+const idCol = 'id';
 
-const errors = [
-    "Invalid login",
-    "Database query error"
-];
-
-initdb();
-
-//app.post('/login', async(req, res) => {
-async function initdb() {
+app.post('/login', async(req, res) => {
     try {
-        await db.init(/*req.body.provider*/'mysql', { 
+        await db.init(req.body.provider, { 
             host: process.env.DB_HOST,
-            //user: req.body.username,
-            //password: req.body.password, 
-            //database: req.body.database 
-			user: 'ephp001',
-			password: 'huneecoh',
-			database: 'ephp001'
+            user: req.body.username,
+            password: req.body.password, 
+            database: req.body.database 
         }, idCol);
 
-/*        allTables = await db.getAllTables(req.body.database||null);
+        allTables = await db.getAllTables(req.body.database||null);
         if(!tables) {
             tables = allTables;
         }
-		*/
- //       res.redirect('/');
+        res.json(tables);
     } catch(e) {
-        console.error(e);
-  //      res.redirect('/login?error=1');
+        res.status(401).json({error:e});
     }
 
-//});
-
-app.post('/logout', (req, res) => {
-    db.destroy();
-    res.redirect('/login');
 });
 
 app.get('/login', (req, res) => {
-    const error = req.query.error > 0 && req.query.error <= errors.length ? errors[req.query.error-1] : ""; 
-    TODO('login', { error: error } );
+    res.json({loggedIn: db.conn ? true: false, tables: tables || []});
+});
+
+app.post('/logout', (req, res) => {
+    db.destroy();
+    tables = null;
+    res.json({success: 1});
 });
 
 app.use((req, res, next) => {
     if(!db.conn) {
-        res.redirect('/login');
+        res.status(401).json({error: 'Need to have a valid database connection.'});
     } else {
         next();
     }
@@ -69,7 +56,6 @@ app.use((req, res, next) => {
 
 app.get('/allTables', async(req, res) => {
     const allResults = {};
-    const error = req.query.error > 0 && req.query.error <= errors.length ? errors[req.query.error-1] : ""; 
     for(let table of tables) {
         try {
             allResults[table] = await db.getTableData(table); 
@@ -77,7 +63,7 @@ app.get('/allTables', async(req, res) => {
             console.error(`Table ${table}: Error: ${e}`);
         }
     }
-	res.json(allResults);
+    res.json(allResults);
 });
 
 app.get('/table/:table([a-zA-Z_]+)', async(req, res) => {
@@ -94,20 +80,20 @@ app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res)=> {
     sql += placeholders.join(',') + ` WHERE ${idCol}=${req.params.id}`;
     try {
         await db.updateQuery(sql, Object.values(req.body));
-		res.json({success:1});
+        res.json({success:1});
     } catch(e) {
         console.error(e);
-		res.json({error:e});
+        res.json({error:e});
     }
 });
 
 app.delete('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res) => {
     try {
         await db.updateQuery(`DELETE FROM ${req.params.table} where ${idCol}=${req.params.id}`);
-		res.json({success:1});
+        res.json({success:1});
     } catch(e) {
         console.error(e);
-		res.json({error:e});
+        res.json({error:e});
     }
 });
     
@@ -116,10 +102,10 @@ app.post('/:table([a-zA-Z_]+)/row/create', async(req, res) => {
     let sql = `INSERT INTO ${req.params.table} (` + cols.join(',') + `) VALUES (` + cols.map(col => '?').join(',') + `)`;
     try {
         const results = await db.updateQuery(sql, Object.values(req.body));
-		res.json({id: results.insertId});
+        res.json({id: results.insertId});
     } catch(e) {
         console.error(e);
-		res.json({error:e});
+        res.json({error:e});
     }
 });
 
@@ -129,9 +115,9 @@ async function showTable(res, table) {
         return await db.getTableData(table);
     } catch(e) {
         console.error(e);
-		res.json({error:e});
+        res.json({error:e});
     }    
 }
 
 app.listen(3100);
-}
+
