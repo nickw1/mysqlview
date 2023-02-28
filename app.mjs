@@ -1,4 +1,4 @@
-import express from 'express'
+import express from 'express';
 import mysql2 from 'mysql2/promise';
 import 'dotenv/config';
 
@@ -8,17 +8,14 @@ app.set('view engine', 'ejs');
 app.use(express.urlencoded({extended: false}));
 
 app.use(express.static('public'));
+app.use(express.json());
 
 import DB from './db.mjs';
 const db = new DB();
 
 let tables = process.env.TABLES ? JSON.parse(process.env.TABLES): null, allTables;
-const idCol = process.env.ID_COLUMN || 'id'
 
-const errors = [
-    "Invalid login",
-    "Database query error"
-];
+const idCol = 'id';
 
 app.post('/login', async(req, res) => {
     try {
@@ -29,39 +26,37 @@ app.post('/login', async(req, res) => {
             database: req.body.database 
         }, idCol);
 
-        allTables = await db.getAllTables(req.body.database);
+        allTables = await db.getAllTables(req.body.database||null);
         if(!tables) {
             tables = allTables;
         }
-        res.redirect('/');
+        res.json(tables);
     } catch(e) {
-        console.error(e);
-        res.redirect('/login?error=1');
+        res.status(401).json({error:e});
     }
 
 });
 
-app.post('/logout', (req, res) => {
-    db.destroy();
-    res.redirect('/login');
+app.get('/login', (req, res) => {
+    res.json({loggedIn: db.conn ? true: false, tables: tables || []});
 });
 
-app.get('/login', (req, res) => {
-    const error = req.query.error > 0 && req.query.error <= errors.length ? errors[req.query.error-1] : ""; 
-    res.render('login', { error: error } );
+app.post('/logout', (req, res) => {
+    db.destroy();
+    tables = null;
+    res.json({success: 1});
 });
 
 app.use((req, res, next) => {
     if(!db.conn) {
-        res.redirect('/login');
+        res.status(401).json({error: 'Need to have a valid database connection.'});
     } else {
         next();
     }
 });
 
-app.get('/', async(req, res) => {
+app.get('/allTables', async(req, res) => {
     const allResults = {};
-    const error = req.query.error > 0 && req.query.error <= errors.length ? errors[req.query.error-1] : ""; 
     for(let table of tables) {
         try {
             allResults[table] = await db.getTableData(table); 
@@ -69,15 +64,15 @@ app.get('/', async(req, res) => {
             console.error(`Table ${table}: Error: ${e}`);
         }
     }
-    res.render('index', { allResults: allResults, idCol: idCol, error: error, allTables: allTables } );
+    res.json(allResults);
 });
 
 app.get('/table/:table([a-zA-Z_]+)', async(req, res) => {
-    await showTable(res, req.params.table);
+    res.json(await showTable(res, req.params.table));
 });
 
 app.get('/table', async(req, res) => {
-    await showTable(res, req.query.tableName);
+    res.json(await showTable(res, req.query.tableName));
 });
 
 app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res)=> {
@@ -86,20 +81,20 @@ app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res)=> {
     sql += placeholders.join(',') + ` WHERE ${idCol}=${req.params.id}`;
     try {
         await db.updateQuery(sql, Object.values(req.body));
-        res.redirect('/');
+        res.json({success:1});
     } catch(e) {
         console.error(e);
-        res.redirect(`/?error=2`);
+        res.json({error:e});
     }
 });
 
-app.post('/:table([a-zA-Z_]+)/row/:id(\\d+)/delete', async(req, res) => {
+app.delete('/:table([a-zA-Z_]+)/row/:id(\\d+)', async(req, res) => {
     try {
         await db.updateQuery(`DELETE FROM ${req.params.table} where ${idCol}=${req.params.id}`);
-        res.redirect('/');
+        res.json({success:1});
     } catch(e) {
         console.error(e);
-        res.redirect(`/?error=2`);
+        res.json({error:e});
     }
 });
     
@@ -107,22 +102,23 @@ app.post('/:table([a-zA-Z_]+)/row/create', async(req, res) => {
     const cols = Object.keys(req.body);
     let sql = `INSERT INTO ${req.params.table} (` + cols.join(',') + `) VALUES (` + cols.map(col => '?').join(',') + `)`;
     try {
-        await db.updateQuery(sql, Object.values(req.body));
-        res.redirect('/');
+        const results = await db.updateQuery(sql, Object.values(req.body));
+        res.json({id: results.insertId});
     } catch(e) {
         console.error(e);
-        res.redirect(`/?error=2`);
+        res.json({error:e});
     }
 });
 
 async function showTable(res, table) {
     const allResults = {};
     try {
-        allResults[table] = await db.getTableData(table);
+        return await db.getTableData(table);
     } catch(e) {
         console.error(e);
+        res.json({error:e});
     }    
-    res.render('index', { allResults: allResults, idCol: idCol, error: "", allTables: allTables } );
 }
 
 app.listen(3100);
+

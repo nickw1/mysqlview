@@ -48,12 +48,14 @@ class DB {
         switch(this.provider) {
             case "mysql":
                 const [results, fields] = await this.conn.execute(sql, params);
-                return results.affectedRows;
+                return results;
                 break;
 
             case "sqlite":
                 const info = this.conn.prepare(sql).run(params);
-                return info.changes;
+                return {
+                    insertId: info.lastInsertRowid
+                };
                 break;
         }
     }
@@ -76,21 +78,32 @@ class DB {
 
     async getTableData(table) {
         const data = {
-            results: [], 
+            results: {}, 
             fieldNames: []
         };
 
+        let results;
         switch(this.provider) {
             case "mysql":
-                const [results, fields] = await this.conn.execute(`SELECT * FROM ${table} ORDER BY ${this.idCol}`);
+                const [results1, fields] = await this.conn.execute(`SELECT * FROM ${table} ORDER BY ${this.idCol}`);
+                results = results1;
                 data.fieldNames = fields.map(fieldInfo => fieldInfo.name);
-                data.results = results;
                 break;
             
             case "sqlite":
                 data.fieldNames = this.conn.prepare(`pragma table_info(${table})`).all().map (fieldInfo => fieldInfo.name);
-                data.results = this.conn.prepare(`SELECT * FROM ${table} ORDER BY ${this.idCol}`).all();
+                results = this.conn.prepare(`SELECT * FROM ${table} ORDER BY ${this.idCol}`).all();
                 break;
+        }
+
+        if(data.fieldNames.length > 0) {
+            results.forEach ( result => {
+                data.results[result[this.idCol]] = { };
+                data.fieldNames.forEach (field => {
+                    data.results[result[this.idCol]][field] = result[field];
+                });
+                data.results[result[this.idCol]] = result;
+            }); 
         }
         return data; 
     }
