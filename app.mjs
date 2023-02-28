@@ -15,7 +15,7 @@ const db = new DB();
 
 let tables = process.env.TABLES ? JSON.parse(process.env.TABLES): null, allTables;
 
-const idCol = 'id';
+const idCol = process.env.ID_COLUMN || 'id'; 
 
 app.post('/login', async(req, res) => {
     try {
@@ -30,7 +30,7 @@ app.post('/login', async(req, res) => {
         if(!tables) {
             tables = allTables;
         }
-        res.json(tables);
+        res.json({idCol: idCol, tables: tables});
     } catch(e) {
         res.status(401).json({error:e});
     }
@@ -38,7 +38,7 @@ app.post('/login', async(req, res) => {
 });
 
 app.get('/login', (req, res) => {
-    res.json({loggedIn: db.conn ? true: false, tables: tables || []});
+    res.json({loggedIn: db.conn ? true: false, tables: tables || [], idCol : idCol});
 });
 
 app.post('/logout', (req, res) => {

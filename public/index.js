@@ -1,4 +1,4 @@
-const idCol = 'id';
+let idCol = 'id';
 
 function LoginForm({onLogin, onLogout, loginStatus}) {
     
@@ -221,8 +221,9 @@ function App({loginStatus, tables}) {
         setResults(res);
     }
 
-    async function onLoggedIn(tables) {
-        setTableList(tables);    
+    async function onLoggedIn(response) {
+        setTableList(response.tables);    
+        idCol = response.idCol;
         setLoggedIn(true);
     }
 
@@ -240,6 +241,7 @@ const root = ReactDOM.createRoot(
     document.getElementById('root')
 );
 
-fetch('/login').then(response => response.json()).then(loginStatus => {
-    root.render(<App loginStatus={loginStatus.loggedIn} tables={loginStatus.tables} />)
+fetch('/login').then(response => response.json()).then(response => {
+    idCol = response.idCol;
+    root.render(<App loginStatus={response.loggedIn} tables={response.tables} />)
 });
