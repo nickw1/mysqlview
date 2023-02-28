@@ -1,6 +1,6 @@
-# Node MySQL visualiser
+# Node MySQL and SQLite visualiser
 
-An extremely simple Node and Express-based visualiser and editor for a MySQL database.
+An extremely simple Node and Express-based visualiser and editor for a MySQL or SQLite database.
 Settings should be specified in `.env` (an example is supplied):
 
 - `DB_HOST` - database host machine, usually `localhost`
